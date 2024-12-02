@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invernadero</title>
+	<h2>________________________</h2>
+	<h1>Invernadero</h1>
+	<h3>________________________</h3>
+  <style>
+    body {
+      background-color: white;
+      color: black;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    #leftPanel {
+	background-color: black;
+	color: white;
+      width: 10%;
+      float: left;
+      border: 2px solid green;
+      padding: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+ 	margin-top: 0 px;
+	margin-left: 30px;
+    }
+    #centerPanel {
+      width: 60%;
+      float: left;
+ 	margin-top: 0px;
+	
+    }
+    #rightPanel {
+      width: 20%;
+      float: right;
+      padding: 20px;
+	margin-top: 0px;
+	margin-right: 25px;
+    }
+    canvas {
+      display: inline-block;
+      margin: 20px auto;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: gray;
+      color: black;
+      border: green;
+      width: 80%;
+      cursor: pointer;
+      transition: box-shadow 0.5s;
+    }
+    button:hover {
+      box-shadow: 0 0 15px rgba(76, 175, 80, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <div id="leftPanel">
+    <h3>Panel de control</h3>
+<h4>_____________</h4>
+<h4>Módulo relé</h4>
+
+    <button onclick="toggleRelay(1)">1</button>
+    <button onclick="toggleRelay(2)">2</button>
+<h4>_____________</h4>
+
+    <button onclick="downloadCharts()">Descargar gráficas</button>
+<h4>_____________</h4>
+    <button onclick="goToAdafruit()">Adafruit IO</button>
+  </div>
+
+  <div id="centerPanel">
+    <h2></h2>
+    <canvas id="tempChart" width="700" height="250"></canvas>
+    <canvas id="humChart" width="700" height="250"></canvas>
+  </div>
+
+  <div id="rightPanel">
+   
+    <div>
+      <h4>Tanque de agua</h4>
+      <div id="waterTank" style="width: 100px; height: 160px; border: 2px solid #000; background-color: #ccc;">
+        <div id="waterFill" style="width: 100%; height: 0%; background-color: #00f;"></div>
+      </div>
+      <p>Nivel de Agua: <span id="waterPercentage">0</span>%</p>
+    </div>
+
+    <div>
+      <h4>Humedad de Suelo</h4>
+      <div id="coffeeCup" style="width: 100px; height: 160px; border: 2px solid #000; background-color: #6f4e37;">
+        <div id="coffeeFill" style="width: 100%; height: 0%; background-color: #00f;"></div>
+      </div>
+      <p>Humedad: <span id="soilMoisturePercentage">0</span>%</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Función para alternar los relés
+    function toggleRelay(channel) {
+      fetch(`/toggleRelay?channel=` + channel);
+    }
+
+    // Función para descargar las gráficas
+    function downloadCharts() {
+      alert('Descargar gráficas aún no está implementado.');
+    }
+
+    // Función para ir a Adafruit IO
+    function goToAdafruit() {
+      window.open('https://io.adafruit.com/', '_blank');
+    }
+
+    // DHT11
+    const tempData = { labels: [], datasets: [{ label: 'Temperature (°C)', borderColor: 'rgb(255, 99, 132)', data: [] }] };
+    const humData = { labels: [], datasets: [{ label: 'Humidity (%)', borderColor: 'rgb(54, 162, 235)', data: [] }] };
+    const tempConfig = { type: 'line', data: tempData, options: { scales: { x: { display: true, title: { display: true, text: 'Time' } } } } };
+    const humConfig = { type: 'line', data: humData, options: { scales: { x: { display: true, title: { display: true, text: 'Time' } } } } };
+    const tempChart = new Chart(document.getElementById('tempChart'), tempConfig);
+    const humChart = new Chart(document.getElementById('humChart'), humConfig);
+
+    // Actualizar los datos en tiempo real
+    setInterval(async () => {
+      const response = await fetch('/data');
+      const data = await response.json();
+      const time = new Date().toLocaleTimeString();
+      if (tempData.labels.length > 20) { tempData.labels.shift(); tempData.datasets[0].data.shift(); }
+      if (humData.labels.length > 20) { humData.labels.shift(); humData.datasets[0].data.shift(); }
+      tempData.labels.push(time); tempData.datasets[0].data.push(data.temperatureC); tempChart.update();
+      humData.labels.push(time); humData.datasets[0].data.push(data.humidity); humChart.update();
+
+      // Actualizar tanque de agua
+      document.getElementById('waterFill').style.height = data.waterLevel + '%';
+      document.getElementById('waterPercentage').innerText = data.waterLevel;
+
+      // Actualizar humedad del suelo
+      document.getElementById('coffeeFill').style.height = data.soilMoisture + '%';
+      document.getElementById('soilMoisturePercentage').innerText = data.soilMoisture;
+    }, 2000);
+  </script>
+</body>
+</html>
